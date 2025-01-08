@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"path": "../../vscode ext"
+		},
+		{
+			"name": "BLE",
+			"path": ".."
+		}
+	],
+	"settings": {}
+}
