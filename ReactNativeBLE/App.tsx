@@ -212,7 +212,7 @@ function App() {
     if(servoAngle < 180){
       const angleToSend = servoAngle + 15;
       setServoAngle(angleToSend);
-      sendDataToESP("Servo1: " + angleToSend);
+      sendDataToESP("Servo: " + angleToSend);
     }
   }
 
@@ -220,7 +220,7 @@ function App() {
     if(servoAngle > 0){
       const angleToSend = servoAngle - 15;
       setServoAngle(angleToSend);
-      sendDataToESP("Servo1: " + angleToSend);
+      sendDataToESP("Servo: " + angleToSend);
     }
   }
 

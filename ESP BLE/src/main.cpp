@@ -62,7 +62,8 @@ class CharacteristicsCallbacks : public BLECharacteristicCallbacks
   {
     incomingData = pCharacteristic->getValue().c_str();
 
-    if(incomingData.find("ServoMainservoMain") != std::string::npos){
+    // Şu anda tek servo açısı geliyor, özelleştirme ile her servoya ayrı açı gönderilmeli
+    if(incomingData.find("Servo") != std::string::npos){
       size_t colonPos = incomingData.find(":");
 
       int servoAngle;
@@ -72,6 +73,8 @@ class CharacteristicsCallbacks : public BLECharacteristicCallbacks
         valuePart.erase(0, valuePart.find_first_not_of(" "));
 
         servoAngle = std::stoi(valuePart);
+
+        Serial.println(servoAngle);
 
         servoMain.write(servoAngle);
         servo1.write(servoAngle);
