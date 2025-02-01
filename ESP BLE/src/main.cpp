@@ -8,6 +8,7 @@
 #include <BLEUtils.h>
 #include <BLE2902.h>
 #include <HardwareSerial.h>
+#include <ESP32Servo.h>
 
 BLEServer* pServer = NULL;
 BLECharacteristic* pCharacteristic = NULL;
@@ -21,7 +22,15 @@ bool isSelamIsGiven = false;
 // See the following for generating UUIDs:
 // https://www.uuidgenerator.net/
 
-String incomingData = "";
+std::string incomingData = "";
+
+Servo servoMain;
+Servo servo1;
+
+int servoMainPin = 5;
+int servo1Pin = 18;
+
+int ledPin = 2;
 
 // #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
@@ -53,14 +62,55 @@ class CharacteristicsCallbacks : public BLECharacteristicCallbacks
   {
     incomingData = pCharacteristic->getValue().c_str();
 
+    if(incomingData.find("ServoMainservoMain") != std::string::npos){
+      size_t colonPos = incomingData.find(":");
+
+      int servoAngle;
+
+      if (colonPos != std::string::npos) {
+        std::string valuePart = incomingData.substr(colonPos + 1);
+        valuePart.erase(0, valuePart.find_first_not_of(" "));
+
+        servoAngle = std::stoi(valuePart);
+
+        servoMain.write(servoAngle);
+        servo1.write(servoAngle);
+
+        digitalWrite(ledPin, 1);
+        delay(100);
+        digitalWrite(ledPin, 0);
+      }
+    }
+
+
     Serial.print("Incoming Data: ");
-    Serial.println(incomingData);
+    Serial.println(incomingData.c_str());
   }
 };
 
 void setup() {
   // Serial.begin(115200);
   Serial.begin(9600);
+
+  servoMain.attach(servoMainPin);
+  servo1.attach(servo1Pin);
+
+  servoMain.write(0);
+  servo1.write(0);
+
+  delay(500);
+
+  servoMain.write(180);
+  servo1.write(180);
+
+  delay(500);
+  
+  servoMain.write(0);
+  servo1.write(0);
+
+  delay(1000);
+
+  pinMode(ledPin, OUTPUT);
 
   // Create the BLE Device
   BLEDevice::init("ESP32");

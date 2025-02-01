@@ -272,10 +272,7 @@
     "C:/Users/Eray/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src",
     ""
   ],
-  "C_Cpp_Runner.includeSearch": [
-    "*",
-    "**/*"
-  ],
+  "C_Cpp_Runner.includeSearch": ["*", "**/*"],
   "C_Cpp_Runner.excludeSearch": [
     "**/build",
     "**/build/**",
@@ -311,6 +308,33 @@
     "ostream": "cpp",
     "streambuf": "cpp",
     "utility": "cpp",
-    "new": "cpp"
+    "new": "cpp",
+    "atomic": "cpp",
+    "cctype": "cpp",
+    "clocale": "cpp",
+    "cstdarg": "cpp",
+    "cstddef": "cpp",
+    "cstdint": "cpp",
+    "cstdio": "cpp",
+    "cstdlib": "cpp",
+    "cstring": "cpp",
+    "ctime": "cpp",
+    "cwchar": "cpp",
+    "cwctype": "cpp",
+    "deque": "cpp",
+    "unordered_set": "cpp",
+    "vector": "cpp",
+    "exception": "cpp",
+    "iterator": "cpp",
+    "map": "cpp",
+    "string_view": "cpp",
+    "initializer_list": "cpp",
+    "iomanip": "cpp",
+    "iosfwd": "cpp",
+    "limits": "cpp",
+    "sstream": "cpp",
+    "stdexcept": "cpp",
+    "cinttypes": "cpp",
+    "typeinfo": "cpp"
   }
 }

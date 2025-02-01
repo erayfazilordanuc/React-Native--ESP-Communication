@@ -7,7 +7,8 @@ import {
   Platform,
   View,
   Text,
-  Alert
+  Alert,
+  ScrollView
 } from 'react-native';
 
 import base64 from 'react-native-base64';
@@ -19,9 +20,10 @@ const BLTManager = new BleManager();
 
 const SERVICE_UUID = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
 //const CHARACTERISTIC_UUID = 'beefcafe-36e1-4688-b7f5-00000000000b';
-const CHARACTERISTIC_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
+//const CHARACTERISTIC_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
 
 function App() {
+  const [CHARACTERISTIC_UUID, setCHARACTERISTIC_UUID] = useState('beb5483e-36e1-4688-b7f5-ea07361b26a8');
   // Is a device connected?
   const [isConnected, setIsConnected] = useState(false);
 
@@ -43,6 +45,10 @@ function App() {
   const [error, setError] = useState('No Error');
 
   const [sentDataCount, setSentDataCount] = useState(1);
+
+  const [servoAngle, setServoAngle] = useState(0);
+
+  const [isServoIncreasing, setIsServoIncreasing] = useState(true);
 
   const permissions = [
     PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
@@ -143,6 +149,8 @@ function App() {
       console.log('Scanning for devices...');
     }
 
+    setScannedDevices(new Set());
+
     BLTManager.startDeviceScan(null, null, (error, scannedDevice) => {
       if (error) {
         console.error(error + "\n" + 'Error reason:', error.reason);
@@ -165,26 +173,28 @@ function App() {
       if(scannedDevice){
         const deviceName = scannedDevice.name;
         if(deviceName !== null && deviceName !== undefined){
-          if (!scannedDevices.has(deviceName)) {
-            const updatedSet = new Set(scannedDevices);
-            updatedSet.add(deviceName);
-            setScannedDevices(updatedSet);
-            console.log(`Found device: ${scannedDevice.name}`);
-          }
+          setScannedDevices(prevSet => {
+            if (!prevSet.has(deviceName)) {
+              const updatedSet = new Set(prevSet);
+              updatedSet.add(deviceName);
+              console.log(`Found device: ${scannedDevice.name}`);
+              return updatedSet;
+            }
+            return prevSet;
+          });
 
           if (scannedDevice.name === 'ESP32' && withConnect) {
             console.log('ESP32 device found! Stopping scan and connecting...');
-            BLTManager.stopDeviceScan();
-            setIsScanning(false);
+            stopScanning();
             connectDevice(scannedDevice);
           }
         }
-    }
+      }
     });
 
     // Stop scanning devices after 5 seconds
     setTimeout(() => {
-      BLTManager.stopDeviceScan();
+      stopScanning();
     }, 5000);
   }
 
@@ -193,9 +203,25 @@ function App() {
     setIsScanning(false);
   }
 
-  const handleSendData = () => {
+  const handleSendCheckData = () => {
     sendDataToESP("Datake: " + sentDataCount);
     setSentDataCount(sentDataCount + 1);
+  }
+
+  const handleIncreaseServoAngle = () => {
+    if(servoAngle < 180){
+      const angleToSend = servoAngle + 15;
+      setServoAngle(angleToSend);
+      sendDataToESP("Servo1: " + angleToSend);
+    }
+  }
+
+  const handleDecreaseServoAngle = () => {
+    if(servoAngle > 0){
+      const angleToSend = servoAngle - 15;
+      setServoAngle(angleToSend);
+      sendDataToESP("Servo1: " + angleToSend);
+    }
   }
 
   async function sendDataToESP(value: string) {
@@ -246,6 +272,9 @@ function App() {
       console.log('Device connected:', connected.name);
       setConnectedDevice(connected);
       setIsConnected(true);
+      
+      BLTManager.stopDeviceScan();
+      setIsScanning(false);
 
       await connected.discoverAllServicesAndCharacteristics();
       console.log('Services and characteristics discovered');
@@ -307,6 +336,18 @@ function App() {
     }
   }
 
+  const handleChangeCharacteristic = () => {
+    if(CHARACTERISTIC_UUID === 'beb5483e-36e1-4688-b7f5-ea07361b26a8'){
+      setCHARACTERISTIC_UUID('beefcafe-36e1-4688-b7f5-00000000000b');
+    }else{
+      setCHARACTERISTIC_UUID('beb5483e-36e1-4688-b7f5-ea07361b26a8');
+    }
+  
+    const log = "Characteristic UUID changed to : " + CHARACTERISTIC_UUID;
+    console.log(log);
+    setLog(log);
+  }
+
   return (
     <View style={{flex: 1, justifyContent: 'flex-start', alignItems: 'center', paddingTop: 75}}>
       {/* Title */}
@@ -314,107 +355,147 @@ function App() {
         <Text style={styles.titleText}>BLE Sample</Text>
       </View>
 
-      <View style={{flex: 1, justifyContent: 'flex-start', alignItems: 'center', paddingTop: 25}}>
-        {/* Connect / Disconnect Button */}
-        <View style={styles.rowView}>
-          <TouchableOpacity style={{width: 120}}>
-            {!isConnected ? (
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic">
+        <View style={{flex: 1, justifyContent: 'flex-start', alignItems: 'center', paddingTop: 25}}>
+          {/* Connect / Disconnect Button */}
+          <View style={styles.rowView}>
+            <TouchableOpacity style={{width: 120}}>
+              {!isConnected ? (
+                <Button
+                  title="Connect to ESP32"
+                  onPress={handleConnect}
+                  disabled={false}
+                />
+              ) : (
+                <Button
+                  title="Disconnect"
+                  onPress={disconnectDevice}
+                  disabled={false}
+                />
+              )}
+            </TouchableOpacity>
+          </View>
+          
+          <View style={{ padding: 10 }} />
+              
+          <View style={styles.rowView}>
+            <TouchableOpacity style={{ width: 120 }}>
               <Button
-                title="Connect to ESP32"
-                onPress={handleConnect}
-                disabled={false}
-              />
-            ) : (
+                title="Change Characteristic"
+                onPress={handleChangeCharacteristic}
+                disabled={false} />
+            </TouchableOpacity>
+          </View>
+
+          {isConnected ? (
+            <>
+              <View style={{ padding: 10 }} />
+              
+              <View style={styles.rowView}>
+                <TouchableOpacity style={{ width: 120 }}>
+                  <Button
+                    title="Increase Servo Angle"
+                    onPress={handleIncreaseServoAngle}
+                    disabled={false} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={{ padding: 10 }} />
+              
+              <View style={styles.rowView}>
+                <TouchableOpacity style={{ width: 120 }}>
+                  <Button
+                    title="Decrease Servo Angle"
+                    onPress={handleDecreaseServoAngle}
+                    disabled={false} />
+                </TouchableOpacity>
+              </View>
+            </>
+            ) : (null)}
+
+          <View style={{padding: 10}} />
+
+          <View style={styles.rowView}>
+            <TouchableOpacity style={{width: 120}}>
+                <Button
+                  title="Send Data"
+                  onPress={handleSendCheckData}
+                  disabled={false}
+                />
+            </TouchableOpacity>
+          </View>
+
+          <View style={{padding: 5}} />
+
+          {/* Monitored Value */}
+          <View style={styles.rowView}>
+            <Text style={styles.subTitleText}>Outgoing Data:</Text>
+          </View>
+          <View style={styles.rowView}>
+            <Text style={styles.baseText}>{outgoingData}</Text>
+          </View>
+          
+          <View style={{padding: 5}} />
+
+          <View style={styles.rowView}>
+            <Text style={styles.subTitleText}>Incoming Data:</Text>
+          </View>
+          <View style={styles.rowView}>
+            <Text style={styles.baseText}>{message}</Text>
+          </View>
+          <View style={{padding: 5}} />
+          <View style={styles.rowView}>
+            <Text style={styles.subTitleText}>Permission States:</Text>
+          </View>
+          <View style={styles.rowView}>
+            <Text style={styles.baseText}>{permissionStates}</Text>
+          </View>
+          <View style={{padding: 5}} />
+          <View style={styles.rowView}>
+            <Text style={styles.subTitleText}>Logs:</Text>
+          </View>
+          <View style={styles.rowView}>
+            <Text style={styles.baseText}>{log}</Text>
+          </View>
+          <View style={{padding: 5}} />
+          <View style={styles.rowView}>
+            <Text style={styles.subTitleText}>Errors:</Text>
+          </View>
+          <View style={styles.rowView}>
+            <Text style={styles.baseText}>{error}</Text>
+          </View>
+          
+          <View style={{padding: 10}} />
+          
+          <View style={styles.rowView}>
+            <TouchableOpacity style={{width: 120}}>
+            {!isScanning ? (
               <Button
-                title="Disconnect"
-                onPress={disconnectDevice}
+                title="Scan Devices"
+                onPress={handleScan}
                 disabled={false}
-              />
+              /> 
+              ) : (
+                <Button
+                  title="Stop Scanning Devices"
+                  onPress={stopScanning}
+                  disabled={false}
+                />
             )}
-          </TouchableOpacity>
-        </View>
+            </TouchableOpacity>
+          </View>
 
-        <View style={{padding: 10}} />
+          <View style={{padding: 10}} />
 
-        <View style={styles.rowView}>
-          <TouchableOpacity style={{width: 120}}>
-              <Button
-                title="Send Data"
-                onPress={handleSendData}
-                disabled={false}
-              />
-          </TouchableOpacity>
+          <View style={styles.rowView}>
+            <Text style={styles.titleText}>Scanned Devices:</Text>
+          </View>
+          {Array.from(scannedDevices).map((deviceName, index) => (
+            <Text key={index} style={styles.baseText}>{deviceName}</Text>
+          ))}
         </View>
-
-        <View style={{padding: 5}} />
-
-        {/* Monitored Value */}
-        <View style={styles.rowView}>
-          <Text style={styles.subTitleText}>Outgoing Data:</Text>
-        </View>
-        <View style={styles.rowView}>
-          <Text style={styles.baseText}>{outgoingData}</Text>
-        </View>
-        
-        <View style={{padding: 5}} />
-
-        <View style={styles.rowView}>
-          <Text style={styles.subTitleText}>Incoming Data:</Text>
-        </View>
-        <View style={styles.rowView}>
-          <Text style={styles.baseText}>{message}</Text>
-        </View>
-        <View style={{padding: 5}} />
-        <View style={styles.rowView}>
-          <Text style={styles.subTitleText}>Permission States:</Text>
-        </View>
-        <View style={styles.rowView}>
-          <Text style={styles.baseText}>{permissionStates}</Text>
-        </View>
-        <View style={{padding: 5}} />
-        <View style={styles.rowView}>
-          <Text style={styles.subTitleText}>Logs:</Text>
-        </View>
-        <View style={styles.rowView}>
-          <Text style={styles.baseText}>{log}</Text>
-        </View>
-        <View style={{padding: 5}} />
-        <View style={styles.rowView}>
-          <Text style={styles.subTitleText}>Errors:</Text>
-        </View>
-        <View style={styles.rowView}>
-          <Text style={styles.baseText}>{error}</Text>
-        </View>
-        
-        <View style={{padding: 10}} />
-        
-        <View style={styles.rowView}>
-          <TouchableOpacity style={{width: 120}}>
-          {!isScanning ? (
-            <Button
-              title="Scan Devices"
-              onPress={handleScan}
-              disabled={false}
-            /> 
-            ) : (
-              <Button
-                title="Stop Scanning Devices"
-                onPress={stopScanning}
-                disabled={false}
-              />
-          )}
-          </TouchableOpacity>
-        </View>
-
-        <View style={{padding: 10}} />
-
-        <View style={styles.rowView}>
-          <Text style={styles.titleText}>Scanned Devices:</Text>
-        </View>
-        {Array.from(scannedDevices).map((deviceName, index) => (
-          <Text key={index} style={styles.baseText}>{deviceName}</Text>
-        ))}
-      </View>
+      </ScrollView>
     </View>
   );
 }
